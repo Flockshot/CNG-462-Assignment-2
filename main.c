@@ -15,19 +15,24 @@ struct TicTacToe
 };
 typedef struct TicTacToe TicTacToe;
 
+struct Move
+{
+    int x;
+    int y;
+};
+typedef struct Move Move;
 
 
 TicTacToe *createGame();
 char getPlayerChar();
 
 void playPlayerTurn(TicTacToe *game);
-void getPlayerPosition(int *row, int *col);
 
 void playAITurn(TicTacToe* game);
 
-int minimax(TicTacToe* game, int depth, int maximizingPlayer);
-int max(TicTacToe* game, int depth);
-int min(TicTacToe* game, int depth);
+Move* minimax(TicTacToe* game);
+int max(TicTacToe* game, Move *move);
+int min(TicTacToe* game, Move *move);
 
 int checkWin(TicTacToe* game, char player);
 
@@ -44,7 +49,7 @@ void printBoard(TicTacToe *game);
 void calcTime();
 
 
-
+int checkBoardStatus(TicTacToe *game);
 
 int main()
 {
@@ -52,17 +57,26 @@ int main()
 
 
     TicTacToe *game = createGame();
-
-    while(1)
+    int continueGame = 1;
+    while(continueGame)
     {
-        printBoard(game);
         playPlayerTurn(game);
-        if (checkWin(game, game->playerChar))
-        {
-            printf("You win!\n");
-            break;
-        }
+        printBoard(game);
+        continueGame = checkBoardStatus(game);
 
+        if(!continueGame)
+            break;
+
+        clock_t start = clock();
+        // Call the Minimax algorithm to calculate the next move
+        playAITurn(game);
+
+        clock_t end = clock();
+        double elapsed_time = (double)(end - start) / CLOCKS_PER_SEC;
+        printf("Elapsed time: %f\n", elapsed_time);
+
+        printBoard(game);
+        continueGame = checkBoardStatus(game);
     }
 
 
@@ -75,6 +89,8 @@ int main()
     printf("Hello, World!\n");
     return 0;
 }
+
+
 
 TicTacToe *createGame()
 {
@@ -116,48 +132,48 @@ void playPlayerTurn(TicTacToe *game)
     int row = -1;
     int col = -1;
 
-    getPlayerPosition(&row, &col);
+    while (row < 0 || row >= SIZE || col < 0 || col >= SIZE || game->board[row][col] != '_')
+    {
+        printf("Enter the row and column for your move with no overlap eg: (0 0): ");
+        scanf(" %d %d", &row, &col);
+    }
+
 
     game->board[row][col] = game->playerChar;
-}
-void getPlayerPosition(int *row, int *col)
-{
-    while (*row < 0 || *row >= SIZE || *col < 0 || *col >= SIZE)
-    {
-        printf("Enter the row and column for your move (0 0): ");
-        scanf(" %d %d", row, col);
-    }
 }
 
 
 void playAITurn(TicTacToe* game)
 {
-    //int bestMove = getBestMove(game);
-    //makeMove(game, bestMove, game->AIChar);
+    Move *move = minimax(game);
+    game->board[move->x][move->y] = game->AIChar;
+
 }
 
 
 
 
-int minimax(TicTacToe* game, int depth, int maximizingPlayer)
+Move* minimax(TicTacToe* game)
 {
+    Move *move = (Move *) malloc(sizeof(Move));
 
+    printf("score=%d\n", max(game, move));
+    printf("x=%d\n", move->x);
+    printf("y=%d\n", move->y);
 
-    //TODO WHAT IS THIS??
-    int score = evaluateBoard(game);
-    if (score != 0)
-        return score;
-
-    return max(game, depth);
+    return move;
 }
 
-int max(TicTacToe* game, int depth)
+int max(TicTacToe* game, Move *move)
 {
-    if (isBoardFull(game))
+    if (checkWin(game, game->playerChar))
+        return -1; // Player wins
+    else if (checkWin(game, game->AIChar))
+        return 1;
+    else if (isBoardFull(game))
         return 0;
 
     int maxScore = INT_MIN;
-
 
     for (int i = 0; i < SIZE; i++)
     {
@@ -166,14 +182,19 @@ int max(TicTacToe* game, int depth)
             if (game->board[i][j] == '_')
             {
                 game->board[i][j] = game->AIChar;
-                int currentScore = min(game, depth + 1);
+                int currentScore = min(game, move);
 
                 //reverting the change back, so our original board is not changed.
                 game->board[i][j] = '_';
 
                 //TODO CHCECK FOR WHAT MOVE IT WILL BE
                 if (currentScore > maxScore)
+                {
+                    move->x = i;
+                    move->y = j;
                     maxScore = currentScore;
+                }
+
             }
         }
     }
@@ -181,9 +202,13 @@ int max(TicTacToe* game, int depth)
     return maxScore;
 }
 
-int min(TicTacToe* game, int depth)
+int min(TicTacToe* game, Move *move)
 {
-    if (isBoardFull(game))
+    if (checkWin(game, game->playerChar))
+        return -1; // Player wins
+    else if (checkWin(game, game->AIChar))
+        return 1;
+    else if (isBoardFull(game))
         return 0;
 
     int minScore = INT_MAX;
@@ -195,11 +220,16 @@ int min(TicTacToe* game, int depth)
             if (game->board[i][j] == '_')
             {
                 game->board[i][j] = game->playerChar;
-                int currentScore = minimax(game, depth + 1, 1);
+                int currentScore = max(game, move);
                 game->board[i][j] = '_';
 
                 if (currentScore < minScore)
+                {
+                    move->x = i;
+                    move->y = j;
                     minScore = currentScore;
+                }
+
             }
         }
     }
@@ -207,7 +237,7 @@ int min(TicTacToe* game, int depth)
     return minScore;
 }
 
-
+/*
 int getBestMove(TicTacToe* game)
 {
     int bestScore = INT_MIN;
@@ -233,7 +263,7 @@ int getBestMove(TicTacToe* game)
 
     return bestMove;
 }
-
+*/
 
 
 
@@ -316,7 +346,28 @@ int evaluateBoard(TicTacToe* game)
         return 0; // Draw
 }
 
+int checkBoardStatus(TicTacToe *game)
+{
+    if(isBoardFull(game))
+    {
+        printf("Its a draw!\n");
+        return 0;
+    }
+    else
+    {
+        switch(evaluateBoard(game))
+        {
+            case -1:
+                printf("You won!\n");
+                return 0;
+            case 1:
+                printf("You lost!\n");
+                return 0;
+        }
+    }
 
+    return 1;
+}
 
 
 

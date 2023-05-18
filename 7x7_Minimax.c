@@ -4,7 +4,7 @@
 #include <ctype.h>
 #include <malloc.h>
 
-#define SIZE 3
+#define SIZE 7
 
 struct TicTacToe
 {
@@ -54,10 +54,10 @@ int checkBoardStatus(TicTacToe *game);
 int main()
 {
 
-
-
     TicTacToe *game = createGame();
     int continueGame = 1;
+    printBoard(game);
+
     while(continueGame)
     {
         playPlayerTurn(game);
@@ -70,7 +70,6 @@ int main()
         clock_t start = clock();
         // Call the Minimax algorithm to calculate the next move
         playAITurn(game);
-
         clock_t end = clock();
         double elapsed_time = (double)(end - start) / CLOCKS_PER_SEC;
         printf("Elapsed time: %f\n", elapsed_time);
@@ -151,8 +150,6 @@ void playAITurn(TicTacToe* game)
 }
 
 
-
-
 Move* minimax(TicTacToe* game)
 {
     Move *move = (Move *) malloc(sizeof(Move));
@@ -174,6 +171,8 @@ int max(TicTacToe* game, Move *move)
         return 0;
 
     int maxScore = INT_MIN;
+    int bestMoveX = -1;
+    int bestMoveY = -1;
 
     for (int i = 0; i < SIZE; i++)
     {
@@ -190,14 +189,16 @@ int max(TicTacToe* game, Move *move)
                 //TODO CHCECK FOR WHAT MOVE IT WILL BE
                 if (currentScore > maxScore)
                 {
-                    move->x = i;
-                    move->y = j;
+                    bestMoveX = i;
+                    bestMoveY = j;
                     maxScore = currentScore;
                 }
-
             }
         }
     }
+
+    move->x = bestMoveX;
+    move->y = bestMoveY;
 
     return maxScore;
 }
@@ -224,12 +225,7 @@ int min(TicTacToe* game, Move *move)
                 game->board[i][j] = '_';
 
                 if (currentScore < minScore)
-                {
-                    move->x = i;
-                    move->y = j;
                     minScore = currentScore;
-                }
-
             }
         }
     }
@@ -279,43 +275,58 @@ int getBestMove(TicTacToe* game)
 
 int checkWin(TicTacToe* game, char player)
 {
-
     //Checks board horizontally
     for (int x = 0; x < SIZE; x++)
     {
-        int horizontal = 1;
+        for (int y = 0; y <= SIZE - 4; y++)
+        {
+            int horizontal = 1;
 
-        for (int y = 0; y < SIZE; y++)
-            horizontal = horizontal && player == game->board[x][y];
+            for(int z = y; z < SIZE && z < y+4; z++)
+                horizontal = horizontal && player == game->board[x][z];
 
-        if (horizontal)
-            return 1;
+            if (horizontal)
+                return 1;
+        }
     }
 
     //Checks board vertically
     for (int y = 0; y < SIZE; y++)
     {
-        int vertical = 1;
+        for (int x = 0; x <= SIZE - 4; x++)
+        {
+            int vertical = 1;
 
-        for (int x = 0; x < SIZE; x++)
-            vertical = vertical && player == game->board[x][y];
+            for(int z = x; z < SIZE && z < x+4; z++)
+                vertical = vertical && player == game->board[z][y];
 
-        if (vertical)
-            return 1;
+            if (vertical)
+                return 1;
+        }
     }
 
     //Checks board diagonally
-    int diagonal = 1;
-    int diagonal1 = 1;
+    for (int x = 0; x <= SIZE - 4; x++)
+    {
+        int diagonal = 1;
 
+        for(int z = x; z < SIZE && z < x+4; z++)
+            diagonal = diagonal && player == game->board[z][z];
 
-    for (int x = 0; x < SIZE; x++)
-        diagonal = diagonal && player == game->board[x][x];
-    for (int x = 0, y = SIZE - 1; x < SIZE; x++, y--)
-        diagonal1 = diagonal1 && player == game->board[x][y];
-    if (diagonal || diagonal1)
-        return 1;
+        if (diagonal)
+            return 1;
+    }
 
+    for (int x = 0; x <= SIZE - 4; x++)
+    {
+        int diagonal1 = 1;
+
+        for(int z = x; z < SIZE && z < x+4; z++)
+            diagonal1 = diagonal1 && player == game->board[z][(SIZE-1)-z];
+
+        if (diagonal1)
+            return 1;
+    }
 
     return 0;
 }

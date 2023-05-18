@@ -30,9 +30,9 @@ void playPlayerTurn(TicTacToe *game);
 
 void playAITurn(TicTacToe* game);
 
-Move* minimax(TicTacToe* game);
-int max(TicTacToe* game, Move *move);
-int min(TicTacToe* game, Move *move);
+Move* alphaBetaSearch(TicTacToe* game);
+int max(TicTacToe* game, Move *move, int  alpha, int beta);
+int min(TicTacToe* game, Move *move, int  alpha, int beta);
 
 int checkWin(TicTacToe* game, char player);
 
@@ -144,24 +144,24 @@ void playPlayerTurn(TicTacToe *game)
 
 void playAITurn(TicTacToe* game)
 {
-    Move *move = minimax(game);
+    Move *move = alphaBetaSearch(game);
     game->board[move->x][move->y] = game->AIChar;
 
 }
 
 
-Move* minimax(TicTacToe* game)
+Move* alphaBetaSearch(TicTacToe* game)
 {
     Move *move = (Move *) malloc(sizeof(Move));
 
-    printf("score=%d\n", max(game, move));
+    printf("score=%d\n", max(game, move, INT_MIN, INT_MAX));
     printf("x=%d\n", move->x);
     printf("y=%d\n", move->y);
 
     return move;
 }
 
-int max(TicTacToe* game, Move *move)
+int max(TicTacToe* game, Move *move, int  alpha, int beta)
 {
     if (checkWin(game, game->playerChar))
         return -1; // Player wins
@@ -181,7 +181,12 @@ int max(TicTacToe* game, Move *move)
             if (game->board[i][j] == '_')
             {
                 game->board[i][j] = game->AIChar;
-                int currentScore = min(game, move);
+                int currentScore = min(game, move, alpha, beta);
+
+                //printf("score=%d\n", currentScore);
+                //printf("x=%d\n", bestMoveX);
+                //printf("y=%d\n", bestMoveY);
+                //printBoard(game);
 
                 //reverting the change back, so our original board is not changed.
                 game->board[i][j] = '_';
@@ -192,6 +197,14 @@ int max(TicTacToe* game, Move *move)
                     bestMoveX = i;
                     bestMoveY = j;
                     maxScore = currentScore;
+
+                    alpha = alpha>maxScore ? alpha : maxScore;
+                }
+                if(maxScore >= beta)
+                {
+                    move->x = bestMoveX;
+                    move->y = bestMoveY;
+                    return maxScore;
                 }
             }
         }
@@ -203,7 +216,7 @@ int max(TicTacToe* game, Move *move)
     return maxScore;
 }
 
-int min(TicTacToe* game, Move *move)
+int min(TicTacToe* game, Move *move, int  alpha, int beta)
 {
     if (checkWin(game, game->playerChar))
         return -1; // Player wins
@@ -221,11 +234,16 @@ int min(TicTacToe* game, Move *move)
             if (game->board[i][j] == '_')
             {
                 game->board[i][j] = game->playerChar;
-                int currentScore = max(game, move);
+                int currentScore = max(game, move, alpha, beta);
                 game->board[i][j] = '_';
 
                 if (currentScore < minScore)
+                {
                     minScore = currentScore;
+                    beta = beta<minScore ? beta : minScore;
+                }
+                if(minScore <= alpha)
+                    return minScore;
             }
         }
     }
@@ -304,7 +322,7 @@ int checkWin(TicTacToe* game, char player)
                 return 1;
         }
     }
-
+    /*
     //Checks board diagonally
     for (int x = 0; x <= SIZE - 4; x++)
     {
@@ -326,6 +344,44 @@ int checkWin(TicTacToe* game, char player)
 
         if (diagonal1)
             return 1;
+    }
+    */
+    for (int x = 0; x < SIZE - 3; x++)
+    {
+        for (int y = 0; y < SIZE - 3; y++)
+        {
+            int diagonal = 1;
+            for (int z = 0; z < 4; z++)
+            {
+                if (game->board[x + z][y + z] != player)
+                {
+                    diagonal = 0;
+                    break;
+                }
+            }
+            if (diagonal)
+                return 1;
+
+        }
+    }
+
+    // Check diagonally (top-right to bottom-left)
+    for (int x = 0; x < SIZE - 3; x++)
+    {
+        for (int y = 3; y < SIZE; y++)
+        {
+            int diagonal1 = 1;
+            for (int z = 0; z < 4; z++)
+            {
+                if (game->board[x + z][y - z] != player)
+                {
+                    diagonal1 = 0;
+                    break;
+                }
+            }
+            if (diagonal1)
+                return 1;
+        }
     }
 
     return 0;

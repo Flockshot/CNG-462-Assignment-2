@@ -5,6 +5,7 @@
 #include <malloc.h>
 
 #define SIZE 7
+#define DEPTH 7
 
 struct TicTacToe
 {
@@ -31,8 +32,8 @@ void playPlayerTurn(TicTacToe *game);
 void playAITurn(TicTacToe* game);
 
 Move* alphaBetaSearch(TicTacToe* game);
-int max(TicTacToe* game, Move *move, int  alpha, int beta);
-int min(TicTacToe* game, Move *move, int  alpha, int beta);
+int max(TicTacToe* game, Move *move, int  alpha, int beta, int depth);
+int min(TicTacToe* game, Move *move, int  alpha, int beta, int depth);
 
 int checkWin(TicTacToe* game, char player);
 
@@ -154,20 +155,19 @@ Move* alphaBetaSearch(TicTacToe* game)
 {
     Move *move = (Move *) malloc(sizeof(Move));
 
-    printf("score=%d\n", max(game, move, INT_MIN, INT_MAX));
+    printf("score=%d\n", max(game, move, INT_MIN, INT_MAX, DEPTH));
     printf("x=%d\n", move->x);
     printf("y=%d\n", move->y);
 
     return move;
 }
 
-int max(TicTacToe* game, Move *move, int  alpha, int beta)
+int max(TicTacToe* game, Move *move, int  alpha, int beta, int depth)
 {
-    if (checkWin(game, game->playerChar))
-        return -1; // Player wins
-    else if (checkWin(game, game->AIChar))
-        return 1;
-    else if (isBoardFull(game))
+    int evaluation = evaluateBoard(game);
+    if(evaluation != 0 || depth==0)
+        return evaluation;
+    else if(isBoardFull(game))
         return 0;
 
     int maxScore = INT_MIN;
@@ -181,7 +181,7 @@ int max(TicTacToe* game, Move *move, int  alpha, int beta)
             if (game->board[i][j] == '_')
             {
                 game->board[i][j] = game->AIChar;
-                int currentScore = min(game, move, alpha, beta);
+                int currentScore = min(game, move, alpha, beta, depth-1);
 
                 //printf("score=%d\n", currentScore);
                 //printf("x=%d\n", bestMoveX);
@@ -216,14 +216,23 @@ int max(TicTacToe* game, Move *move, int  alpha, int beta)
     return maxScore;
 }
 
-int min(TicTacToe* game, Move *move, int  alpha, int beta)
+int min(TicTacToe* game, Move *move, int  alpha, int beta, int depth)
 {
+    int evaluation = evaluateBoard(game);
+    if(evaluation != 0 || depth==0)
+        return evaluation;
+    else if(isBoardFull(game))
+        return 0;
+    /*
     if (checkWin(game, game->playerChar))
         return -1; // Player wins
     else if (checkWin(game, game->AIChar))
         return 1;
     else if (isBoardFull(game))
         return 0;
+    else if(depth==0)
+        return evaluateBoard(game);
+    */
 
     int minScore = INT_MAX;
 
@@ -234,7 +243,7 @@ int min(TicTacToe* game, Move *move, int  alpha, int beta)
             if (game->board[i][j] == '_')
             {
                 game->board[i][j] = game->playerChar;
-                int currentScore = max(game, move, alpha, beta);
+                int currentScore = max(game, move, alpha, beta, depth-1);
                 game->board[i][j] = '_';
 
                 if (currentScore < minScore)
@@ -293,6 +302,7 @@ int getBestMove(TicTacToe* game)
 
 int checkWin(TicTacToe* game, char player)
 {
+    int wins = 0;
     //Checks board horizontally
     for (int x = 0; x < SIZE; x++)
     {
@@ -304,7 +314,7 @@ int checkWin(TicTacToe* game, char player)
                 horizontal = horizontal && player == game->board[x][z];
 
             if (horizontal)
-                return 1;
+                wins++;
         }
     }
 
@@ -319,7 +329,7 @@ int checkWin(TicTacToe* game, char player)
                 vertical = vertical && player == game->board[z][y];
 
             if (vertical)
-                return 1;
+                wins++;
         }
     }
     /*
@@ -360,7 +370,7 @@ int checkWin(TicTacToe* game, char player)
                 }
             }
             if (diagonal)
-                return 1;
+                wins++;
 
         }
     }
@@ -380,11 +390,11 @@ int checkWin(TicTacToe* game, char player)
                 }
             }
             if (diagonal1)
-                return 1;
+                wins++;
         }
     }
 
-    return 0;
+    return wins;
 }
 
 
@@ -405,12 +415,14 @@ int isBoardFull(TicTacToe* game)
 //TODO CHECK HOW THE UTILITY IS USED.
 int evaluateBoard(TicTacToe* game)
 {
-    if (checkWin(game, game->playerChar))
-        return -1; // Player wins
-    else if (checkWin(game, game->AIChar))
-        return 1; // AI wins
+    int playerWins = checkWin(game, game->playerChar);
+    int AIWins = checkWin(game, game->AIChar);
+    if (AIWins)
+        return AIWins; // Player wins
+    else if (playerWins)
+        return -1*playerWins; // AI wins
     else
-        return 0; // Draw
+        return 0; // Draw or in-progress
 }
 
 int checkBoardStatus(TicTacToe *game)
